@@ -3,6 +3,7 @@ import { Link } from 'react-router';
 import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
 import { Phone, MapPin, CheckCircle2, Star } from 'lucide-react';
+import bgImage from '../assets/background.png';
 
 export default function Home() {
   const { t } = useTranslation();
@@ -25,7 +26,11 @@ export default function Home() {
     <div className="flex flex-col">
       {/* Hero Section */}
       <section className="relative bg-background text-foreground py-20 md:py-32 overflow-hidden border-b-2 border-foreground">
-        <div className="absolute inset-0 opacity-10 bg-[url('https://images.unsplash.com/photo-1580273916550-e323be2ae537?auto=format&fit=crop&q=80&w=1920')] bg-cover bg-center mix-blend-overlay"></div>
+        <div 
+          className="absolute inset-0 bg-cover bg-center"
+          style={{ backgroundImage: `url(${bgImage})` }}
+        ></div>
+        <div className="absolute inset-0 bg-background/85 backdrop-blur-[1px]"></div>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center md:text-left">
           <div className="max-w-3xl mx-auto md:mx-0">
             <p className="text-2xl md:text-3xl mb-4 text-foreground/80">

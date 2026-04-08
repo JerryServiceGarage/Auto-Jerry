@@ -36,13 +36,27 @@ export default function Contact() {
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsSubmitting(true);
     try {
+      // Send email via backend
+      const response = await fetch('/api/contact', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(values),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to send email');
+      }
+
+      // Still save a backup to Firestore
       await addDoc(collection(db, 'contactMessages'), {
         ...values,
         createdAt: serverTimestamp(),
       }).catch(error => {
-        handleFirestoreError(error, OperationType.CREATE, 'contactMessages');
-        throw error;
+        console.error("Backup to Firestore failed:", error);
       });
+      
       setIsSuccess(true);
       form.reset();
     } catch (error) {

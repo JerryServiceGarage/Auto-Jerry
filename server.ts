@@ -4,6 +4,7 @@ import { google } from "googleapis";
 import { initializeApp } from "firebase/app";
 import { getFirestore, collection, addDoc, serverTimestamp, Timestamp, doc, getDoc, setDoc } from "firebase/firestore";
 import fs from "fs";
+import nodemailer from "nodemailer";
 import "dotenv/config";
 
 // Initialize Firebase Client SDK (more reliable for cross-project access in this environment)
@@ -185,6 +186,38 @@ Notes: ${bookingData.notes || 'None'}
   app.post("/api/verify-booking", async (req, res) => {
     const { token } = req.body;
     res.json({ success: true });
+  });
+
+  // Contact form email endpoint
+  app.post("/api/contact", async (req, res) => {
+    try {
+      const { name, emailOrPhone, message } = req.body;
+
+      if (!process.env.GMAIL_APP_PASSWORD) {
+        console.warn("GMAIL_APP_PASSWORD is not set. Skipping email send.");
+        return res.json({ success: true, warning: "Email not sent (missing password)" });
+      }
+
+      const transporter = nodemailer.createTransport({
+        service: "gmail",
+        auth: {
+          user: "jerryservicegarage@gmail.com",
+          pass: process.env.GMAIL_APP_PASSWORD,
+        },
+      });
+
+      await transporter.sendMail({
+        from: '"Jerry Service Garage Website" <jerryservicegarage@gmail.com>',
+        to: "jerryservicegarage@gmail.com",
+        subject: `New Contact Message from ${name}`,
+        text: `Name: ${name}\nContact Info: ${emailOrPhone}\n\nMessage:\n${message}`,
+      });
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error sending contact email:", error);
+      res.status(500).json({ success: false, error: "Failed to send email" });
+    }
   });
 
   // Vite middleware for development
