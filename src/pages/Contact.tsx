@@ -1,28 +1,33 @@
-import { useState, useRef } from 'react';
+// SEND MESSAGE DISABLED: import { useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
-import { Phone, MapPin, Clock, Loader2, CheckCircle2 } from 'lucide-react';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import ReCAPTCHA from "react-google-recaptcha";
+// SEND MESSAGE DISABLED: import { useForm } from 'react-hook-form';
+// SEND MESSAGE DISABLED: import { zodResolver } from '@hookform/resolvers/zod';
+// SEND MESSAGE DISABLED: import * as z from 'zod';
+import { Phone, MapPin, Clock } from 'lucide-react';
+// SEND MESSAGE DISABLED: import { Loader2, CheckCircle2 } from 'lucide-react';
+// SEND MESSAGE DISABLED: import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+// SEND MESSAGE DISABLED: import ReCAPTCHA from "react-google-recaptcha";
 
-import { db, handleFirestoreError, OperationType } from '../firebase';
+// SEND MESSAGE DISABLED: import { db, handleFirestoreError, OperationType } from '../firebase';
 import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
-import { Input } from '../components/ui/input';
-import { Label } from '../components/ui/label';
-import { Textarea } from '../components/ui/textarea';
+// SEND MESSAGE DISABLED: import { Input } from '../components/ui/input';
+// SEND MESSAGE DISABLED: import { Label } from '../components/ui/label';
+// SEND MESSAGE DISABLED: import { Textarea } from '../components/ui/textarea';
 
+/* SEND MESSAGE DISABLED:
 const formSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
   emailOrPhone: z.string().min(5, { message: "Please enter your email or phone number." }),
   message: z.string().min(10, { message: "Message must be at least 10 characters." }),
   honeypot: z.string().optional(), // Hidden field for bots
 });
+*/
 
 export default function Contact() {
   const { t } = useTranslation();
+
+  /* SEND MESSAGE DISABLED:
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null);
@@ -79,6 +84,7 @@ export default function Contact() {
       setIsSubmitting(false);
     }
   }
+  */
 
   return (
     <div className="py-12 bg-background min-h-screen">
@@ -88,7 +94,8 @@ export default function Contact() {
           <div className="w-24 h-1 bg-primary mx-auto"></div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+        {/* SEND MESSAGE DISABLED: grid changed from lg:grid-cols-2 to single column */}
+        <div className="grid grid-cols-1 gap-12 max-w-2xl mx-auto w-full">
 
           {/* Contact Info & Map */}
           <div className="space-y-8">
@@ -152,7 +159,7 @@ export default function Contact() {
             </div>
           </div>
 
-          {/* Contact Form */}
+          {/* SEND MESSAGE DISABLED:
           <div>
             <Card className="bg-card border-border shadow-lg h-full">
               <CardContent className="p-8">
@@ -193,7 +200,6 @@ export default function Contact() {
                       {form.formState.errors.message && <p className="text-destructive text-sm">{form.formState.errors.message.message}</p>}
                     </div>
 
-                    {/* Honeypot field - hidden from real users */}
                     <input
                       type="text"
                       {...form.register("honeypot")}
@@ -222,6 +228,7 @@ export default function Contact() {
               </CardContent>
             </Card>
           </div>
+          */}
 
         </div>
       </div>

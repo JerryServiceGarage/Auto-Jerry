@@ -39,9 +39,11 @@ export default function Home() {
               <Button asChild size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground text-xl px-10 py-6 rounded-full">
                 <a href="tel:5144538805" className="flex items-center"><Phone className="mr-2 h-6 w-6" /> {t('cta.call')}</a>
               </Button>
+              {/* BOOKING DISABLED:
               <Button asChild size="lg" variant="outline" className="bg-transparent border-2 border-foreground text-foreground hover:bg-foreground hover:text-background text-xl px-10 py-6 rounded-full">
                 <Link to="/book" className="flex items-center">{t('cta.book')}</Link>
               </Button>
+              */}
             </div>
           </div>
         </div>

@@ -2,36 +2,77 @@
   "entities": {
     "BookingRequest": {
       "title": "BookingRequest",
-      "description": "A request for a service appointment",
+      "description": "A request for a service appointment, including Google Calendar sync and Resend reminder tracking",
       "type": "object",
       "properties": {
-        "fullName": { "type": "string" },
-        "phone": { "type": "string" },
-        "email": { "type": "string", "format": "email" },
-        "vehicleYear": { "type": "string" },
-        "vehicleMake": { "type": "string" },
-        "vehicleModel": { "type": "string" },
-        "serviceName": { "type": "string" },
-        "appointmentDate": { "type": "string" },
-        "appointmentTime": { "type": "string" },
-        "notes": { "type": "string" },
-        "language": { "type": "string" },
-        "status": { "type": "string" },
-        "createdAt": { "type": "string", "format": "date-time" },
-        "verificationToken": { "type": "string" },
-        "expiresAt": { "type": "string", "format": "date-time" }
+        "fullName":             { "type": "string" },
+        "phone":                { "type": "string" },
+        "email":                { "type": "string", "format": "email" },
+        "vehicleYear":          { "type": "string" },
+        "vehicleMake":          { "type": "string" },
+        "vehicleModel":         { "type": "string" },
+        "serviceName":          { "type": "string" },
+        "appointmentDate":      { "type": "string", "description": "yyyy-MM-dd display string" },
+        "appointmentTime":      { "type": "string", "description": "HH:mm display string" },
+        "appointmentAt":        { "type": "string", "format": "date-time", "description": "UTC Firestore Timestamp of the appointment" },
+        "timezone":             { "type": "string", "description": "IANA timezone for display, e.g. America/Montreal" },
+        "notes":                { "type": "string" },
+        "language":             { "type": "string" },
+        "status": {
+          "type": "string",
+          "enum": ["pending_verification", "confirmed", "booked", "rescheduled", "cancelled", "completed"]
+        },
+        "googleCalendarEventId": { "type": ["string", "null"] },
+        "resend": {
+          "type": "object",
+          "description": "Resend email tracking for confirmation and scheduled reminders",
+          "properties": {
+            "confirmationEmailId": { "type": ["string", "null"] },
+            "reminder24h": {
+              "type": "object",
+              "properties": {
+                "emailId":      { "type": ["string", "null"] },
+                "scheduledFor": { "type": ["string", "null"], "format": "date-time" },
+                "status": {
+                  "type": "string",
+                  "enum": ["scheduled", "pendingScheduleLater", "sent", "cancelled", "skipped", "failed"]
+                }
+              }
+            },
+            "reminder2h": {
+              "type": "object",
+              "properties": {
+                "emailId":      { "type": ["string", "null"] },
+                "scheduledFor": { "type": ["string", "null"], "format": "date-time" },
+                "status": {
+                  "type": "string",
+                  "enum": ["scheduled", "pendingScheduleLater", "sent", "cancelled", "skipped", "failed"]
+                }
+              }
+            }
+          }
+        },
+        "createdAt":            { "type": "string", "format": "date-time" },
+        "updatedAt":            { "type": "string", "format": "date-time" },
+        "verificationToken":    { "type": "string" },
+        "expiresAt":            { "type": "string", "format": "date-time" }
       },
-      "required": ["fullName", "phone", "email", "vehicleYear", "vehicleMake", "vehicleModel", "serviceName", "appointmentDate", "appointmentTime", "status", "createdAt"]
+      "required": [
+        "fullName", "phone", "email",
+        "vehicleYear", "vehicleMake", "vehicleModel",
+        "serviceName", "appointmentDate", "appointmentTime",
+        "status", "createdAt"
+      ]
     },
     "ContactMessage": {
       "title": "ContactMessage",
       "description": "A message sent from the contact form",
       "type": "object",
       "properties": {
-        "name": { "type": "string" },
+        "name":         { "type": "string" },
         "emailOrPhone": { "type": "string" },
-        "message": { "type": "string" },
-        "createdAt": { "type": "string", "format": "date-time" }
+        "message":      { "type": "string" },
+        "createdAt":    { "type": "string", "format": "date-time" }
       },
       "required": ["name", "emailOrPhone", "message", "createdAt"]
     }
@@ -39,7 +80,7 @@
   "firestore": {
     "/bookingRequests/{requestId}": {
       "schema": { "$ref": "#/entities/BookingRequest" },
-      "description": "Stores all booking requests"
+      "description": "Stores all booking requests with Resend reminder IDs and Google Calendar event ID"
     },
     "/contactMessages/{messageId}": {
       "schema": { "$ref": "#/entities/ContactMessage" },

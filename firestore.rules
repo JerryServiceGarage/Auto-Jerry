@@ -2,35 +2,20 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     // ===============================================================
-    // Assumed Data Model
+    // Data Model: bookingRequests
     // ===============================================================
     //
-    // Collection: bookingRequests
-    // Document ID: auto-generated
-    // Fields:
-    //   - fullName: string (required, length > 0, < 100)
-    //   - phone: string (required, length > 0, < 20)
-    //   - email: string (required, valid email)
-    //   - vehicleYear: string (required, length > 0, < 10)
-    //   - vehicleMake: string (required, length > 0, < 50)
-    //   - vehicleModel: string (required, length > 0, < 50)
-    //   - serviceName: string (required, length > 0, < 100)
-    //   - appointmentDate: string (required, valid date string)
-    //   - appointmentTime: string (required, length > 0, < 10)
-    //   - notes: string (optional, length < 1000)
-    //   - language: string (optional, length < 10)
-    //   - status: string (required, == 'pending_verification')
-    //   - createdAt: timestamp (required)
-    //   - verificationToken: string (required, length > 0, < 100)
-    //   - expiresAt: timestamp (required)
+    // Core booking fields (submitted by client):
+    //   fullName, phone, email, vehicleYear, vehicleMake, vehicleModel
+    //   serviceName, appointmentDate, appointmentTime, notes, language
+    //   status, createdAt, verificationToken, expiresAt
     //
-    // Collection: contactMessages
-    // Document ID: auto-generated
-    // Fields:
-    //   - name: string (required, length > 0, < 100)
-    //   - emailOrPhone: string (required, length > 0, < 100)
-    //   - message: string (required, length > 0, < 2000)
-    //   - createdAt: timestamp (required)
+    // Extended fields (set by server after booking):
+    //   appointmentAt     – Timestamp (UTC) of the appointment
+    //   timezone          – string, e.g. "America/Montreal"
+    //   googleCalendarEventId – string | null
+    //   resend            – map { confirmationEmailId, reminder24h, reminder2h }
+    //   updatedAt         – Timestamp
     //
     // ===============================================================
 
@@ -73,9 +58,25 @@ service cloud.firestore {
     // ===============================================================
 
     function isValidBookingRequest() {
-      let requiredFields = ['fullName', 'phone', 'email', 'vehicleYear', 'vehicleMake', 'vehicleModel', 'serviceName', 'appointmentDate', 'appointmentTime', 'status', 'createdAt', 'verificationToken', 'expiresAt'];
-      let allowedFields = ['fullName', 'phone', 'email', 'vehicleYear', 'vehicleMake', 'vehicleModel', 'serviceName', 'appointmentDate', 'appointmentTime', 'status', 'createdAt', 'verificationToken', 'expiresAt', 'notes', 'language'];
-      
+      let requiredFields = [
+        'fullName', 'phone', 'email',
+        'vehicleYear', 'vehicleMake', 'vehicleModel',
+        'serviceName', 'appointmentDate', 'appointmentTime',
+        'status', 'createdAt', 'verificationToken', 'expiresAt'
+      ];
+      let allowedFields = [
+        'fullName', 'phone', 'email',
+        'vehicleYear', 'vehicleMake', 'vehicleModel',
+        'serviceName', 'appointmentDate', 'appointmentTime',
+        'status', 'createdAt', 'verificationToken', 'expiresAt',
+        'notes', 'language',
+        // Server-set fields
+        'appointmentAt', 'timezone',
+        'googleCalendarEventId',
+        'resend',
+        'updatedAt'
+      ];
+
       return hasRequiredFields(requiredFields) &&
              hasOnlyAllowedFields(allowedFields) &&
              validStringLength('fullName', 1, 100) &&
@@ -89,7 +90,14 @@ service cloud.firestore {
              validStringLength('appointmentTime', 1, 10) &&
              isValidOptionalString('notes', 0, 1000) &&
              isValidOptionalString('language', 0, 10) &&
-             (request.resource.data.status == 'pending_verification' || request.resource.data.status == 'confirmed') &&
+             (
+               request.resource.data.status == 'pending_verification' ||
+               request.resource.data.status == 'confirmed' ||
+               request.resource.data.status == 'booked' ||
+               request.resource.data.status == 'rescheduled' ||
+               request.resource.data.status == 'cancelled' ||
+               request.resource.data.status == 'completed'
+             ) &&
              request.resource.data.createdAt is timestamp &&
              validStringLength('verificationToken', 1, 100) &&
              request.resource.data.expiresAt is timestamp;
@@ -97,7 +105,7 @@ service cloud.firestore {
 
     function isValidContactMessage() {
       let fields = ['name', 'emailOrPhone', 'message', 'createdAt'];
-      
+
       return hasRequiredFields(fields) &&
              hasOnlyAllowedFields(fields) &&
              validStringLength('name', 1, 100) &&
@@ -113,15 +121,18 @@ service cloud.firestore {
     match /bookingRequests/{requestId} {
       // Anyone can submit a booking request (public form)
       allow create: if isValidBookingRequest();
-      // Allow read for verification
-      allow read: if true;
-      // Allow update for status change
-      allow update: if true;
+      // Direct client reads/updates are blocked. The server must use the Firebase
+      // Admin SDK (which bypasses rules) for all server-side read/update operations.
+      // Re-evaluate this when booking is re-enabled and Admin SDK is in place.
+      allow read: if false;
+      allow update: if false;
     }
 
     match /settings/{settingId} {
-      // Allow server to store/retrieve OAuth tokens
-      allow read, write: if true;
+      // Locked. Production deployments use a Service Account for Google Calendar,
+      // so OAuth token storage is not needed. The server must not write sensitive
+      // tokens to a client-accessible collection.
+      allow read, write: if false;
     }
 
     match /contactMessages/{messageId} {

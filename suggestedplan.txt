@@ -1,0 +1,535 @@
+My situation:
+I am using firebase/firestore, resend and google calendar. Please give me a step by step detailed instruction on how to do that? I already have nodemail to send me "Contact Us" emails directly and using resend to send the confirmation email after they book. I am not on the blaze plan
+
+Suggested plan:
+For your exact setup, the simplest path is:
+Use Resend’s scheduled emails for the reminders, and store the reminder IDs in Firestore.
+Because you’re not on Firebase Blaze, I would not build this with Firebase scheduled functions right now. Firebase’s own docs say deploying Cloud Functions requires the pay-as-you-go Blaze plan, and scheduled functions use Cloud Scheduler, which is billed.
+
+This works well because Resend can:
+
+schedule emails for a specific time,
+reschedule them,
+cancel them,
+and schedule up to 30 days ahead.
+Also, scheduled emails cannot be sent via SMTP, so this should use the Resend API/SDK, not Nodemailer SMTP.
+What you should build
+
+When someone books:
+
+Save the booking in Firestore
+Create the Google Calendar event
+Send the normal confirmation email with Resend
+Schedule:
+one reminder 24 hours before
+one reminder 2 hours before
+Save the returned Resend email IDs in Firestore
+
+Then, if they reschedule or cancel:
+
+update or cancel the Google Calendar event
+cancel the old scheduled Resend reminder emails
+create new ones if needed
+update Firestore
+Important limitation before you start
+
+Resend scheduled emails can only be scheduled up to 30 days in advance. So if someone books an appointment 2 months from now, you cannot schedule the 24-hour reminder immediately on booking day.
+
+So use this rule:
+
+if the reminder time is within 30 days, schedule it now
+if it is more than 30 days away, store it in Firestore as pendingScheduleLater
+
+For a garage site, that may be totally fine, because many bookings are within a few days or weeks anyway.
+
+Step 1: Add fields to your Firestore appointment document
+
+Create one document per booking, something like:
+
+appointments/{appointmentId}
+
+Suggested shape:
+
+{
+  customerName: "John Doe",
+  customerEmail: "john@email.com",
+  customerPhone: "514-555-1234",
+
+  service: "Oil Change",
+  notes: "Please check brakes too",
+
+  appointmentAt: Timestamp,        // UTC
+  timezone: "America/Montreal",    // or your garage timezone
+  garageName: "Jerry Service Garage",
+  garageAddress: "123 Main St, Laval, QC",
+
+  status: "booked", // booked | cancelled | completed | rescheduled
+
+  googleCalendarEventId: "abc123",
+
+  resend: {
+    confirmationEmailId: "...." || null,
+
+    reminder24h: {
+      emailId: "...." || null,
+      scheduledFor: Timestamp || null,
+      status: "scheduled" // scheduled | pendingScheduleLater | sent | cancelled | skipped
+    },
+
+    reminder2h: {
+      emailId: "...." || null,
+      scheduledFor: Timestamp || null,
+      status: "scheduled" // scheduled | pendingScheduleLater | sent | cancelled | skipped
+    }
+  },
+
+  createdAt: Timestamp,
+  updatedAt: Timestamp
+}
+Why this matters
+
+You need to store the Resend reminder email IDs because Resend’s update/cancel actions work on the email ID.
+
+Step 2: Always store the appointment time in UTC
+
+This is really important.
+
+Save:
+
+the appointment time as a real UTC date/timestamp
+the display timezone separately
+
+Example:
+
+customer books April 20, 2026 at 2:00 PM Montreal time
+convert that to a real Date
+save it in Firestore as a Timestamp
+also save "America/Montreal"
+
+That helps prevent reminder bugs around timezone and daylight savings.
+
+Step 3: Make a helper that calculates reminder times
+
+Server-side:
+
+function getReminderDates(appointmentDate) {
+  const twentyFourHoursBefore = new Date(appointmentDate.getTime() - 24 * 60 * 60 * 1000);
+  const twoHoursBefore = new Date(appointmentDate.getTime() - 2 * 60 * 60 * 1000);
+
+  return {
+    twentyFourHoursBefore,
+    twoHoursBefore,
+  };
+}
+Step 4: Create a helper that checks if a reminder can be scheduled now
+
+Because of the 30-day Resend limit:
+
+function canScheduleWithResend(targetDate) {
+  const now = new Date();
+  const maxDate = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+
+  return targetDate > now && targetDate <= maxDate;
+}
+
+Resend supports scheduling up to 30 days ahead.
+
+Step 5: Create a Resend helper for scheduled reminders
+
+Use the Resend API/SDK, not SMTP, because scheduled sending is not supported through SMTP.
+
+Example:
+
+import { Resend } from "resend";
+
+const resend = new Resend(process.env.RESEND_API_KEY);
+
+async function scheduleReminderEmail({
+  to,
+  subject,
+  html,
+  scheduledAt,
+}) {
+  const { data, error } = await resend.emails.send({
+    from: "Jerry Service Garage <appointments@yourdomain.com>",
+    to: [to],
+    subject,
+    html,
+    scheduledAt: scheduledAt.toISOString(),
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  return data?.id || null;
+}
+
+Resend’s docs show scheduledAt can be set with an ISO date, and scheduled emails can later be updated or cancelled.
+
+Step 6: In your booking flow, schedule the reminders right after booking
+
+Your booking flow should look like this:
+
+A. User submits booking form
+
+Validate:
+
+name
+email
+selected service
+appointment date/time
+B. Create the Google Calendar event
+
+Save the returned event ID.
+
+C. Send confirmation email
+
+You already do this with Resend.
+
+D. Calculate reminder times
+const appointmentDate = new Date(appointmentAt);
+const { twentyFourHoursBefore, twoHoursBefore } = getReminderDates(appointmentDate);
+E. Schedule each reminder if possible
+
+Example:
+
+let reminder24h = {
+  emailId: null,
+  scheduledFor: twentyFourHoursBefore,
+  status: "skipped",
+};
+
+if (canScheduleWithResend(twentyFourHoursBefore)) {
+  const emailId = await scheduleReminderEmail({
+    to: customerEmail,
+    subject: `Reminder: Your appointment is tomorrow at ${formattedTime}`,
+    html: `
+      <p>Hi ${customerName},</p>
+      <p>This is a reminder that your appointment with ${garageName} is tomorrow.</p>
+      <p><strong>Service:</strong> ${service}</p>
+      <p><strong>Time:</strong> ${formattedDateTime}</p>
+      <p><strong>Location:</strong> ${garageAddress}</p>
+      <p>If you need to reschedule, please contact us.</p>
+    `,
+    scheduledAt: twentyFourHoursBefore,
+  });
+
+  reminder24h = {
+    emailId,
+    scheduledFor: twentyFourHoursBefore,
+    status: "scheduled",
+  };
+} else if (twentyFourHoursBefore > new Date()) {
+  reminder24h = {
+    emailId: null,
+    scheduledFor: twentyFourHoursBefore,
+    status: "pendingScheduleLater",
+  };
+}
+
+Do the same for the 2-hour reminder.
+
+F. Save everything to Firestore
+
+Store:
+
+appointment data
+Google Calendar event ID
+confirmation email ID if you want
+reminder IDs/statuses
+Step 7: Example full booking flow skeleton
+import admin from "firebase-admin";
+import { google } from "googleapis";
+import { Resend } from "resend";
+
+const db = admin.firestore();
+const resend = new Resend(process.env.RESEND_API_KEY);
+
+async function createBooking(req, res) {
+  try {
+    const {
+      customerName,
+      customerEmail,
+      customerPhone,
+      service,
+      appointmentAt,
+      garageName,
+      garageAddress,
+    } = req.body;
+
+    const appointmentDate = new Date(appointmentAt);
+
+    // 1) Create Google Calendar event
+    const googleEvent = await createGoogleCalendarEvent({
+      customerName,
+      customerEmail,
+      service,
+      appointmentDate,
+      garageName,
+      garageAddress,
+    });
+
+    // 2) Send confirmation email immediately
+    const confirmation = await resend.emails.send({
+      from: "Jerry Service Garage <appointments@yourdomain.com>",
+      to: [customerEmail],
+      subject: "Appointment Confirmation",
+      html: `
+        <p>Hi ${customerName},</p>
+        <p>Your appointment has been booked.</p>
+        <p><strong>Service:</strong> ${service}</p>
+        <p><strong>Time:</strong> ${appointmentDate.toLocaleString()}</p>
+        <p><strong>Location:</strong> ${garageAddress}</p>
+      `,
+    });
+
+    // 3) Build reminder dates
+    const { twentyFourHoursBefore, twoHoursBefore } = getReminderDates(appointmentDate);
+
+    // 4) Schedule reminder emails
+    let reminder24h = { emailId: null, scheduledFor: twentyFourHoursBefore, status: "skipped" };
+    let reminder2h = { emailId: null, scheduledFor: twoHoursBefore, status: "skipped" };
+
+    if (canScheduleWithResend(twentyFourHoursBefore)) {
+      const emailId = await scheduleReminderEmail({
+        to: customerEmail,
+        subject: "Reminder: Your appointment is tomorrow",
+        html: `<p>Reminder for your ${service} appointment tomorrow.</p>`,
+        scheduledAt: twentyFourHoursBefore,
+      });
+      reminder24h = { emailId, scheduledFor: twentyFourHoursBefore, status: "scheduled" };
+    } else if (twentyFourHoursBefore > new Date()) {
+      reminder24h.status = "pendingScheduleLater";
+    }
+
+    if (canScheduleWithResend(twoHoursBefore)) {
+      const emailId = await scheduleReminderEmail({
+        to: customerEmail,
+        subject: "Reminder: Your appointment is in 2 hours",
+        html: `<p>Reminder for your ${service} appointment in 2 hours.</p>`,
+        scheduledAt: twoHoursBefore,
+      });
+      reminder2h = { emailId, scheduledFor: twoHoursBefore, status: "scheduled" };
+    } else if (twoHoursBefore > new Date()) {
+      reminder2h.status = "pendingScheduleLater";
+    }
+
+    // 5) Save booking
+    const docRef = await db.collection("appointments").add({
+      customerName,
+      customerEmail,
+      customerPhone,
+      service,
+      appointmentAt: admin.firestore.Timestamp.fromDate(appointmentDate),
+      timezone: "America/Montreal",
+      garageName,
+      garageAddress,
+      status: "booked",
+      googleCalendarEventId: googleEvent.id,
+      resend: {
+        confirmationEmailId: confirmation.data?.id || null,
+        reminder24h: {
+          emailId: reminder24h.emailId,
+          scheduledFor: admin.firestore.Timestamp.fromDate(reminder24h.scheduledFor),
+          status: reminder24h.status,
+        },
+        reminder2h: {
+          emailId: reminder2h.emailId,
+          scheduledFor: admin.firestore.Timestamp.fromDate(reminder2h.scheduledFor),
+          status: reminder2h.status,
+        },
+      },
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    return res.status(200).json({
+      success: true,
+      appointmentId: docRef.id,
+      googleCalendarEventId: googleEvent.id,
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ success: false, error: error.message });
+  }
+}
+Step 8: When a booking is rescheduled
+
+This part is extremely important.
+
+When the customer changes the appointment:
+
+Read the appointment document from Firestore
+Update the Google Calendar event
+Cancel any existing scheduled reminder emails
+Recalculate the new reminder times
+Schedule the new ones
+Update Firestore
+
+Resend supports both update and cancel for scheduled emails.
+
+Safest approach
+
+Instead of trying to be fancy with update, I’d do this:
+
+cancel old reminders
+create new reminders
+
+That is easier to reason about.
+
+Example:
+
+async function cancelScheduledEmailIfExists(emailId) {
+  if (!emailId) return;
+
+  try {
+    await resend.emails.cancel(emailId);
+  } catch (err) {
+    console.error("Failed to cancel email:", emailId, err.message);
+  }
+}
+
+Then on reschedule:
+
+await cancelScheduledEmailIfExists(appointment.resend?.reminder24h?.emailId);
+await cancelScheduledEmailIfExists(appointment.resend?.reminder2h?.emailId);
+
+// then calculate new reminder times and schedule new ones
+
+Resend says that once an email is cancelled, it cannot be rescheduled, so after cancelling, just create a fresh scheduled email.
+
+Step 9: When a booking is cancelled
+
+When the appointment is cancelled:
+
+mark Firestore appointment as cancelled
+cancel any scheduled reminder emails in Resend
+update or delete the Google Calendar event
+
+Example logic:
+
+await db.collection("appointments").doc(appointmentId).update({
+  status: "cancelled",
+  updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+});
+
+await cancelScheduledEmailIfExists(appointment.resend?.reminder24h?.emailId);
+await cancelScheduledEmailIfExists(appointment.resend?.reminder2h?.emailId);
+
+// update Firestore reminder statuses too
+Step 10: Handle bookings more than 30 days out
+
+Because Resend only schedules up to 30 days ahead, you need one extra rule for long-range bookings.
+
+Easy starter version
+
+If garage bookings are usually within 30 days, you can launch without extra automation.
+
+Just:
+
+schedule what is within 30 days
+store the rest as pendingScheduleLater
+Better full version
+
+Add one small daily job on your existing backend/host that:
+
+looks for appointments with reminders marked pendingScheduleLater
+checks whether the reminder time is now within 30 days
+schedules the email then
+updates Firestore with the new Resend email ID and status
+
+Because you’re not on Blaze, I would run that daily job on:
+
+your existing server if you have one,
+or your website host’s scheduled job feature,
+or a simple external scheduler that hits a protected endpoint on your server.
+
+The reason I’m suggesting this is specifically because Firebase scheduled functions would push you toward Blaze billing.
+
+Step 11: Add a “repair” endpoint for safety
+
+This is optional, but really smart.
+
+Create a protected server endpoint like:
+
+POST /api/reminders/backfill
+
+What it does:
+
+find appointments where reminder status is pendingScheduleLater
+if reminder time is now within 30 days and still in the future, schedule it
+save the returned Resend email ID
+
+This protects you if:
+
+a booking was made far in advance
+a reminder failed to schedule during the initial booking
+you deploy a fix later and want to catch older appointments
+Step 12: Suggested reminder statuses
+
+Use clear statuses like this:
+
+scheduled
+pendingScheduleLater
+sent
+cancelled
+skipped
+failed
+
+That makes debugging much easier.
+
+Step 13: Keep all email sending on the server
+
+Do not call Resend directly from the browser.
+
+Keep:
+
+RESEND_API_KEY
+Google Calendar credentials
+any admin Firestore access
+
+on the server only.
+
+Step 14: Keep your email templates simple
+
+For reminders, I’d use:
+
+24-hour reminder
+
+Subject:
+
+Reminder: Your garage appointment is tomorrow
+2-hour reminder
+
+Subject:
+
+Reminder: Your garage appointment is in 2 hours
+
+Include:
+
+customer name
+service booked
+date/time
+garage address
+phone number
+reschedule link or contact instructions
+Step 15: Best practical setup for you right now
+
+For your current stack, I’d do this:
+
+Right now
+Firestore stores the booking
+Google Calendar stores the calendar event
+Resend sends:
+confirmation immediately
+24h reminder
+2h reminder
+And because you’re not on Blaze
+don’t use Firebase scheduled functions yet
+use Resend scheduled emails
+store reminder IDs in Firestore
+cancel/recreate them on reschedule
+add a small later-job only if you need long-range bookings
+
+That is the lowest-complexity version that still stays solid. Firebase’s docs show Cloud Functions deployment is tied to Blaze, and scheduled functions use Cloud Scheduler, while Resend already supports scheduling, updating, and cancelling individual emails directly.

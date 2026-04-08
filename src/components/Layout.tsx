@@ -17,7 +17,7 @@ export default function Layout() {
   const navLinks = [
     { name: t('nav.home'), path: '/' },
     { name: t('nav.services'), path: '/services' },
-    { name: t('nav.book'), path: '/book' },
+    // BOOKING DISABLED: { name: t('nav.book'), path: '/book' },
     { name: t('nav.about'), path: '/about' },
     { name: t('nav.contact'), path: '/contact' },
   ];
@@ -30,7 +30,7 @@ export default function Layout() {
           <div className="flex justify-between h-20 items-center">
             {/* Logo */}
             <Link to="/" className="flex items-center gap-2">
-              <div className="w-10 h-10 rounded-full border-2 border-foreground overflow-hidden flex-shrink-0 bg-primary">
+              <div className="w-16 h-16 rounded-full border-2 border-foreground overflow-hidden flex-shrink-0 bg-primary">
                 {/* Placeholder for the uploaded image of Jerry on the phone */}
                 <img 
                   src="https://raw.githubusercontent.com/jdrizzzzz/Skincare-FrontEnd/refs/heads/main/src/assets/Jerry1.jpg" 
@@ -60,9 +60,11 @@ export default function Layout() {
               <button onClick={toggleLanguage} className="font-medium text-muted-foreground hover:text-primary transition-colors">
                 {i18n.language === 'en' ? 'FR' : 'EN'}
               </button>
+              {/* BOOKING DISABLED:
               <Button asChild className="bg-primary hover:bg-primary/90 text-primary-foreground">
                 <Link to="/book">{t('cta.book')}</Link>
               </Button>
+              */}
             </nav>
 
             {/* Mobile Menu Button */}
@@ -98,11 +100,13 @@ export default function Layout() {
                   {link.name}
                 </Link>
               ))}
+              {/* BOOKING DISABLED:
               <div className="mt-4 px-3">
                 <Button asChild className="w-full bg-primary hover:bg-primary/90">
                   <Link to="/book" onClick={() => setIsMenuOpen(false)}>{t('cta.book')}</Link>
                 </Button>
               </div>
+              */}
             </div>
           </div>
         )}
@@ -118,7 +122,7 @@ export default function Layout() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 md:grid-cols-3 gap-12">
           <div>
             <div className="flex items-center gap-2 mb-6">
-              <div className="w-12 h-12 rounded-full border-2 border-background overflow-hidden flex-shrink-0 bg-primary">
+              <div className="w-16 h-16 rounded-full border-2 border-background overflow-hidden flex-shrink-0 bg-primary">
                 {/* Placeholder for the uploaded image of Jerry on the phone */}
                 <img 
                   src="https://raw.githubusercontent.com/jdrizzzzz/Skincare-FrontEnd/refs/heads/main/src/assets/Jerry1.jpg"
@@ -158,9 +162,11 @@ export default function Layout() {
         <Button asChild variant="outline" className="flex-1 border-primary text-primary">
           <a href="tel:5144538805"><Phone size={16} className="mr-2" /> {t('cta.call')}</a>
         </Button>
+        {/* BOOKING DISABLED:
         <Button asChild className="flex-1 bg-primary hover:bg-primary/90">
           <Link to="/book">{t('cta.book')}</Link>
         </Button>
+        */}
       </div>
     </div>
   );

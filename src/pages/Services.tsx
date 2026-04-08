@@ -50,6 +50,7 @@ export default function Services() {
           ))}
         </div>
 
+        {/* BOOKING DISABLED:
         <div className="mt-24 bg-secondary text-secondary-foreground rounded-3xl p-10 md:p-16 border-2 border-foreground shadow-[8px_8px_0px_0px_rgba(23,33,41,1)] text-center">
           <h2 className="text-4xl md:text-5xl font-bold mb-6">{t('services.readyToBook')}</h2>
           <p className="text-xl mb-10 max-w-2xl mx-auto text-secondary-foreground/90">
@@ -64,6 +65,7 @@ export default function Services() {
             </Button>
           </div>
         </div>
+        */}
       </div>
     </div>
   );
