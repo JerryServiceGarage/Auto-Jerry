@@ -1,0 +1,127 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: bookingRequests
+    // Document ID: auto-generated
+    // Fields:
+    //   - fullName: string (required, length > 0, < 100)
+    //   - phone: string (required, length > 0, < 20)
+    //   - email: string (required, valid email)
+    //   - vehicleYear: string (required, length > 0, < 10)
+    //   - vehicleMake: string (required, length > 0, < 50)
+    //   - vehicleModel: string (required, length > 0, < 50)
+    //   - serviceName: string (required, length > 0, < 100)
+    //   - appointmentDate: string (required, valid date string)
+    //   - appointmentTime: string (required, length > 0, < 10)
+    //   - notes: string (optional, length < 1000)
+    //   - language: string (optional, length < 10)
+    //   - status: string (required, == 'pending_verification')
+    //   - createdAt: timestamp (required)
+    //   - verificationToken: string (required, length > 0, < 100)
+    //   - expiresAt: timestamp (required)
+    //
+    // Collection: contactMessages
+    // Document ID: auto-generated
+    // Fields:
+    //   - name: string (required, length > 0, < 100)
+    //   - emailOrPhone: string (required, length > 0, < 100)
+    //   - message: string (required, length > 0, < 2000)
+    //   - createdAt: timestamp (required)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+
+    function isAuthenticated() {
+       return request.auth != null;
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    function hasRequiredFields(fields) {
+       return request.resource.data.keys().hasAll(fields);
+    }
+
+    function validStringLength(field, minLen, maxLen) {
+       return request.resource.data[field] is string &&
+         request.resource.data[field].size() >= minLen &&
+         request.resource.data[field].size() <= maxLen;
+    }
+
+    function isValidEmail(email) {
+       return email is string &&
+         email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    function isValidOptionalString(field, minLen, maxLen) {
+      return !(field in request.resource.data) ||
+             (request.resource.data[field] is string &&
+              request.resource.data[field].size() >= minLen &&
+              request.resource.data[field].size() <= maxLen);
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+
+    function isValidBookingRequest() {
+      let requiredFields = ['fullName', 'phone', 'email', 'vehicleYear', 'vehicleMake', 'vehicleModel', 'serviceName', 'appointmentDate', 'appointmentTime', 'status', 'createdAt', 'verificationToken', 'expiresAt'];
+      let allowedFields = ['fullName', 'phone', 'email', 'vehicleYear', 'vehicleMake', 'vehicleModel', 'serviceName', 'appointmentDate', 'appointmentTime', 'status', 'createdAt', 'verificationToken', 'expiresAt', 'notes', 'language'];
+      
+      return hasRequiredFields(requiredFields) &&
+             hasOnlyAllowedFields(allowedFields) &&
+             validStringLength('fullName', 1, 100) &&
+             validStringLength('phone', 1, 20) &&
+             isValidEmail(request.resource.data.email) &&
+             validStringLength('vehicleYear', 1, 10) &&
+             validStringLength('vehicleMake', 1, 50) &&
+             validStringLength('vehicleModel', 1, 50) &&
+             validStringLength('serviceName', 1, 100) &&
+             validStringLength('appointmentDate', 1, 20) &&
+             validStringLength('appointmentTime', 1, 10) &&
+             isValidOptionalString('notes', 0, 1000) &&
+             isValidOptionalString('language', 0, 10) &&
+             request.resource.data.status == 'pending_verification' &&
+             request.resource.data.createdAt is timestamp &&
+             validStringLength('verificationToken', 1, 100) &&
+             request.resource.data.expiresAt is timestamp;
+    }
+
+    function isValidContactMessage() {
+      let fields = ['name', 'emailOrPhone', 'message', 'createdAt'];
+      
+      return hasRequiredFields(fields) &&
+             hasOnlyAllowedFields(fields) &&
+             validStringLength('name', 1, 100) &&
+             validStringLength('emailOrPhone', 1, 100) &&
+             validStringLength('message', 1, 2000) &&
+             request.resource.data.createdAt is timestamp;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /bookingRequests/{requestId} {
+      // Anyone can submit a booking request (public form)
+      allow create: if isValidBookingRequest();
+      // No one can read, update, or delete (except admins via Firebase Console)
+      allow read, update, delete: if false;
+    }
+
+    match /contactMessages/{messageId} {
+      // Anyone can submit a contact message (public form)
+      allow create: if isValidContactMessage();
+      // No one can read, update, or delete (except admins via Firebase Console)
+      allow read, update, delete: if false;
+    }
+  }
+}

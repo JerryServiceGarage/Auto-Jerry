@@ -1,0 +1,49 @@
+{
+  "entities": {
+    "BookingRequest": {
+      "title": "BookingRequest",
+      "description": "A request for a service appointment",
+      "type": "object",
+      "properties": {
+        "fullName": { "type": "string" },
+        "phone": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "vehicleYear": { "type": "string" },
+        "vehicleMake": { "type": "string" },
+        "vehicleModel": { "type": "string" },
+        "serviceName": { "type": "string" },
+        "appointmentDate": { "type": "string" },
+        "appointmentTime": { "type": "string" },
+        "notes": { "type": "string" },
+        "language": { "type": "string" },
+        "status": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "verificationToken": { "type": "string" },
+        "expiresAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["fullName", "phone", "email", "vehicleYear", "vehicleMake", "vehicleModel", "serviceName", "appointmentDate", "appointmentTime", "status", "createdAt"]
+    },
+    "ContactMessage": {
+      "title": "ContactMessage",
+      "description": "A message sent from the contact form",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "emailOrPhone": { "type": "string" },
+        "message": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "emailOrPhone", "message", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/bookingRequests/{requestId}": {
+      "schema": { "$ref": "#/entities/BookingRequest" },
+      "description": "Stores all booking requests"
+    },
+    "/contactMessages/{messageId}": {
+      "schema": { "$ref": "#/entities/ContactMessage" },
+      "description": "Stores all contact messages"
+    }
+  }
+}
