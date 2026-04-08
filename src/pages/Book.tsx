@@ -76,6 +76,7 @@ export default function Book() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [availableTimes, setAvailableTimes] = useState<string[]>([]);
   
   const initialService = searchParams.get('service') || "";
@@ -100,11 +101,6 @@ export default function Book() {
   useEffect(() => {
     if (selectedDate) {
       const dateStr = format(selectedDate, 'yyyy-MM-dd');
-      // In a real app, fetch from Firestore:
-      // const q = query(collection(db, 'availabilitySlots'), where('date', '==', dateStr), where('isAvailable', '==', true));
-      // const snapshot = await getDocs(q);
-      
-      // Using mock slots for MVP
       const times = mockAvailableSlots
         .filter(slot => slot.date === dateStr && slot.isAvailable)
         .map(slot => slot.time)
@@ -117,6 +113,7 @@ export default function Book() {
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsSubmitting(true);
+    setSubmitError(null);
     try {
       // Create a verification token
       const verificationToken = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
@@ -124,8 +121,8 @@ export default function Book() {
       const bookingData = {
         ...values,
         appointmentDate: format(values.appointmentDate, 'yyyy-MM-dd'),
-        language: i18n.language,
-        status: 'pending_verification',
+        language: i18n.language || 'en',
+        status: 'confirmed', // Set to confirmed immediately
         verificationToken,
       };
 
@@ -144,15 +141,13 @@ export default function Book() {
 
       const result = await response.json();
       
-      // In a real app, this would trigger a Cloud Function to send the email.
-      // For this MVP, we will simulate the email by redirecting to a success page
-      // that provides a "Demo Verify" link.
-      
-      navigate(`/verify?id=${result.id}&token=${verificationToken}`);
+      // Redirect directly to the success state of the verify page
+      navigate(`/verify?id=${result.id}&token=${verificationToken}&action=confirm`);
       
     } catch (error) {
       console.error("Error submitting booking:", error);
-      alert("There was an error submitting your booking. Please try again or call us.");
+      const message = error instanceof Error ? error.message : "There was an error submitting your booking. Please try again or call us.";
+      setSubmitError(message);
     } finally {
       setIsSubmitting(false);
     }
@@ -302,6 +297,11 @@ export default function Book() {
               </div>
 
               <div className="pt-4">
+                {submitError && (
+                  <div className="mb-4 p-4 bg-destructive/10 border border-destructive/20 rounded-md text-destructive text-sm font-medium">
+                    {submitError}
+                  </div>
+                )}
                 <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-lg py-6" disabled={isSubmitting}>
                   {isSubmitting ? (
                     <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Processing...</>
@@ -311,7 +311,8 @@ export default function Book() {
                 </Button>
                 <p className="text-center text-sm text-muted-foreground mt-4">
                   By booking, you agree to our <Link to="/terms" className="underline">Booking Terms</Link>.
-                  Appointments are only confirmed after email verification.
+                  <br />
+                  <span className="text-primary font-medium">Testing Mode: Appointments are automatically confirmed.</span>
                 </p>
               </div>
             </form>

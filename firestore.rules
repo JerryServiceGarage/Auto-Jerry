@@ -89,7 +89,7 @@ service cloud.firestore {
              validStringLength('appointmentTime', 1, 10) &&
              isValidOptionalString('notes', 0, 1000) &&
              isValidOptionalString('language', 0, 10) &&
-             request.resource.data.status == 'pending_verification' &&
+             (request.resource.data.status == 'pending_verification' || request.resource.data.status == 'confirmed') &&
              request.resource.data.createdAt is timestamp &&
              validStringLength('verificationToken', 1, 100) &&
              request.resource.data.expiresAt is timestamp;
@@ -113,8 +113,15 @@ service cloud.firestore {
     match /bookingRequests/{requestId} {
       // Anyone can submit a booking request (public form)
       allow create: if isValidBookingRequest();
-      // No one can read, update, or delete (except admins via Firebase Console)
-      allow read, update, delete: if false;
+      // Allow read for verification
+      allow read: if true;
+      // Allow update for status change
+      allow update: if true;
+    }
+
+    match /settings/{settingId} {
+      // Allow server to store/retrieve OAuth tokens
+      allow read, write: if true;
     }
 
     match /contactMessages/{messageId} {

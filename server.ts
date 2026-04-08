@@ -1,29 +1,26 @@
 import express from "express";
 import path from "path";
 import { google } from "googleapis";
-import admin from "firebase-admin";
+import { initializeApp } from "firebase/app";
+import { getFirestore, collection, addDoc, serverTimestamp, Timestamp, doc, getDoc, setDoc } from "firebase/firestore";
 import fs from "fs";
 import "dotenv/config";
 
-// Initialize Firebase Admin
+// Initialize Firebase Client SDK (more reliable for cross-project access in this environment)
 const firebaseConfig = JSON.parse(fs.readFileSync('./firebase-applet-config.json', 'utf-8'));
-admin.initializeApp({
-  projectId: firebaseConfig.projectId,
-});
-const db = admin.firestore();
-db.settings({ databaseId: firebaseConfig.firestoreDatabaseId });
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
 
 function getGoogleAuth() {
   // Priority 1: Service Account (Seamless)
   if (process.env.GOOGLE_SERVICE_ACCOUNT_KEY) {
     try {
       const key = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_KEY);
-      return new google.auth.JWT(
-        key.client_email,
-        undefined,
-        key.private_key,
-        ["https://www.googleapis.com/auth/calendar.events"]
-      );
+      return new google.auth.JWT({
+        email: key.client_email,
+        key: key.private_key,
+        scopes: ["https://www.googleapis.com/auth/calendar.events"]
+      });
     } catch (e) {
       console.error("Failed to parse GOOGLE_SERVICE_ACCOUNT_KEY:", e);
     }
@@ -85,9 +82,9 @@ async function startServer() {
       }
       const { tokens } = await auth.getToken(code as string);
       if (tokens.refresh_token) {
-        await db.collection("settings").doc("google_calendar").set({
+        await setDoc(doc(db, "settings", "google_calendar"), {
           refresh_token: tokens.refresh_token,
-          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          updatedAt: serverTimestamp(),
         });
       }
       res.send(`
@@ -107,60 +104,75 @@ async function startServer() {
     }
   });
 
-  // Booking endpoint
-  app.post("/api/bookings", async (req, res) => {
+  // Helper for Google Calendar Sync (Non-blocking)
+  async function syncToGoogleCalendar(bookingData: any) {
     try {
-      const bookingData = req.body;
-      
-      // Save to Firestore
-      const docRef = await db.collection("bookingRequests").add({
-        ...bookingData,
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-        expiresAt: admin.firestore.Timestamp.fromDate(new Date(Date.now() + 30 * 60000)),
-      });
+      const auth = getGoogleAuth();
+      let calendarAuth = null;
 
-      // Try to add to Google Calendar
-      try {
-        const auth = getGoogleAuth();
-        let calendarAuth = null;
-
-        if (auth instanceof google.auth.JWT) {
-          // Service Account flow
+      if (auth instanceof google.auth.JWT) {
+        // Service Account flow - No Firestore check needed
+        calendarAuth = auth;
+        console.log("Using Service Account for Google Calendar sync");
+      } else {
+        // OAuth flow - Requires refresh token from Firestore
+        const settingsDoc = await getDoc(doc(db, "settings", "google_calendar"));
+        if (settingsDoc.exists() && settingsDoc.data()?.refresh_token) {
+          auth.setCredentials({ refresh_token: settingsDoc.data()?.refresh_token });
           calendarAuth = auth;
-        } else {
-          // OAuth flow
-          const settingsDoc = await db.collection("settings").doc("google_calendar").get();
-          if (settingsDoc.exists && settingsDoc.data()?.refresh_token) {
-            auth.setCredentials({ refresh_token: settingsDoc.data()?.refresh_token });
-            calendarAuth = auth;
-          }
+          console.log("Using OAuth for Google Calendar sync");
         }
+      }
 
-        if (calendarAuth) {
-          const calendar = google.calendar({ version: "v3", auth: calendarAuth });
-          
-          const startTime = new Date(`${bookingData.appointmentDate}T${bookingData.appointmentTime}:00`);
-          const endTime = new Date(startTime.getTime() + 60 * 60000); // 1 hour duration
+      if (calendarAuth) {
+        const calendar = google.calendar({ version: "v3", auth: calendarAuth });
+        const startTime = new Date(`${bookingData.appointmentDate}T${bookingData.appointmentTime}:00`);
+        const endTime = new Date(startTime.getTime() + 60 * 60000);
 
-          await calendar.events.insert({
-            calendarId: "primary",
-            requestBody: {
-              summary: `Service: ${bookingData.serviceName} - ${bookingData.fullName}`,
-              description: `
+        // Use the specific calendar ID (user's email) instead of 'primary' 
+        // because 'primary' for a service account refers to its own hidden calendar.
+        const targetCalendarId = process.env.GOOGLE_CALENDAR_ID || "jerryservicegarage@gmail.com";
+
+        await calendar.events.insert({
+          calendarId: targetCalendarId,
+          requestBody: {
+            summary: `Service: ${bookingData.serviceName} - ${bookingData.fullName}`,
+            description: `
 Phone: ${bookingData.phone}
 Email: ${bookingData.email}
 Vehicle: ${bookingData.vehicleYear} ${bookingData.vehicleMake} ${bookingData.vehicleModel}
 Notes: ${bookingData.notes || 'None'}
-              `.trim(),
-              start: { dateTime: startTime.toISOString() },
-              end: { dateTime: endTime.toISOString() },
-            },
-          });
-        }
-      } catch (calError) {
-        console.error("Failed to add to Google Calendar:", calError);
-        // Continue even if calendar fails
+            `.trim(),
+            start: { dateTime: startTime.toISOString() },
+            end: { dateTime: endTime.toISOString() },
+          },
+        });
+        console.log("Successfully added event to Google Calendar");
+      } else {
+        console.log("Google Calendar sync skipped: No valid auth (Service Account or OAuth) found.");
       }
+    } catch (error) {
+      console.error("Background Google Calendar sync failed:", error);
+    }
+  }
+
+  // Booking endpoint
+  app.post("/api/bookings", async (req, res) => {
+    console.log("POST /api/bookings - Start");
+    try {
+      const bookingData = req.body;
+      
+      // Save to Firestore
+      console.log("Saving booking to Firestore...");
+      const docRef = await addDoc(collection(db, "bookingRequests"), {
+        ...bookingData,
+        createdAt: serverTimestamp(),
+        expiresAt: Timestamp.fromDate(new Date(Date.now() + 30 * 60000)),
+      });
+      console.log("Booking saved with ID:", docRef.id);
+
+      // Trigger Google Calendar sync in background
+      syncToGoogleCalendar(bookingData);
 
       res.json({ success: true, id: docRef.id });
     } catch (error) {
