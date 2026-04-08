@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams, useNavigate, Link } from 'react-router';
 import { useForm } from 'react-hook-form';
@@ -7,6 +7,7 @@ import * as z from 'zod';
 import { format, addDays, isSameDay } from 'date-fns';
 import { Calendar as CalendarIcon, Loader2 } from 'lucide-react';
 import { collection, addDoc, serverTimestamp, query, where, getDocs } from 'firebase/firestore';
+import ReCAPTCHA from "react-google-recaptcha";
 
 import { db, handleFirestoreError, OperationType } from '../firebase';
 import { Button } from '../components/ui/button';
@@ -69,6 +70,7 @@ const formSchema = z.object({
   appointmentDate: z.date({ message: "Please select a date." }),
   appointmentTime: z.string().min(1, { message: "Please select a time." }),
   notes: z.string().optional(),
+  honeypot: z.string().optional(), // Hidden field for bots
 });
 
 export default function Book() {
@@ -78,6 +80,11 @@ export default function Book() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [availableTimes, setAvailableTimes] = useState<string[]>([]);
+  const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null);
+  const recaptchaRef = useRef<ReCAPTCHA>(null);
+
+  // Google test site key (always passes)
+  const RECAPTCHA_SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY || "6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI";
   
   const initialService = searchParams.get('service') || "";
 
@@ -93,6 +100,7 @@ export default function Book() {
       serviceName: initialService || "",
       appointmentTime: "",
       notes: "",
+      honeypot: "",
     },
   });
 
@@ -112,6 +120,11 @@ export default function Book() {
   }, [selectedDate, form]);
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
+    if (!recaptchaToken) {
+      setSubmitError("Please complete the reCAPTCHA verification.");
+      return;
+    }
+
     setIsSubmitting(true);
     setSubmitError(null);
     try {
@@ -124,6 +137,7 @@ export default function Book() {
         language: i18n.language || 'en',
         status: 'confirmed', // Set to confirmed immediately
         verificationToken,
+        recaptchaToken,
       };
 
       // Send to backend API which handles Firestore and Google Calendar
@@ -294,6 +308,23 @@ export default function Book() {
                     placeholder="Any specific issues or details we should know about?"
                   />
                 </div>
+              </div>
+
+              {/* Honeypot field - hidden from real users */}
+              <input 
+                type="text" 
+                {...form.register("honeypot")} 
+                style={{ display: 'none' }} 
+                tabIndex={-1} 
+                autoComplete="off" 
+              />
+
+              <div className="flex justify-center py-4">
+                <ReCAPTCHA
+                  ref={recaptchaRef}
+                  sitekey={RECAPTCHA_SITE_KEY}
+                  onChange={(token) => setRecaptchaToken(token)}
+                />
               </div>
 
               <div className="pt-4">

@@ -5,12 +5,31 @@ import { initializeApp } from "firebase/app";
 import { getFirestore, collection, addDoc, serverTimestamp, Timestamp, doc, getDoc, setDoc } from "firebase/firestore";
 import fs from "fs";
 import nodemailer from "nodemailer";
+import { Resend } from "resend";
 import "dotenv/config";
 
 // Initialize Firebase Client SDK (more reliable for cross-project access in this environment)
 const firebaseConfig = JSON.parse(fs.readFileSync('./firebase-applet-config.json', 'utf-8'));
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
+
+const resend = new Resend(process.env.RESEND_API_KEY);
+
+// Google test secret key for reCAPTCHA (always passes)
+const RECAPTCHA_SECRET = process.env.RECAPTCHA_SECRET_KEY || "6LeIxAcTAAAAAGG-vFI1TnRWxMZNFuojJ4WifJWe";
+
+async function verifyRecaptcha(token: string) {
+  try {
+    const response = await fetch(`https://www.google.com/recaptcha/api/siteverify?secret=${RECAPTCHA_SECRET}&response=${token}`, {
+      method: 'POST'
+    });
+    const data = await response.json();
+    return data.success;
+  } catch (error) {
+    console.error("reCAPTCHA verification error:", error);
+    return false;
+  }
+}
 
 function getGoogleAuth() {
   // Priority 1: Service Account (Seamless)
@@ -161,8 +180,23 @@ Notes: ${bookingData.notes || 'None'}
   app.post("/api/bookings", async (req, res) => {
     console.log("POST /api/bookings - Start");
     try {
-      const bookingData = req.body;
+      const { honeypot, recaptchaToken, ...bookingData } = req.body;
       
+      // 1. Honeypot Check (if filled out, it's a bot)
+      if (honeypot) {
+        console.log("Bot detected via honeypot in bookings");
+        return res.json({ success: true, id: "bot-blocked" }); // Fake success
+      }
+
+      // 2. reCAPTCHA Check
+      if (!recaptchaToken) {
+        return res.status(400).json({ success: false, error: "reCAPTCHA token missing" });
+      }
+      const isHuman = await verifyRecaptcha(recaptchaToken);
+      if (!isHuman) {
+        return res.status(400).json({ success: false, error: "reCAPTCHA verification failed" });
+      }
+
       // Save to Firestore
       console.log("Saving booking to Firestore...");
       const docRef = await addDoc(collection(db, "bookingRequests"), {
@@ -174,6 +208,40 @@ Notes: ${bookingData.notes || 'None'}
 
       // Trigger Google Calendar sync in background
       syncToGoogleCalendar(bookingData);
+
+      // Send Confirmation Email via Resend
+      if (process.env.RESEND_API_KEY) {
+        const verifyUrl = `${process.env.APP_URL || 'http://localhost:3000'}/verify?id=${docRef.id}&token=${bookingData.verificationToken}&action=confirm`;
+        
+        try {
+          await resend.emails.send({
+            from: 'Jerry Service Garage <onboarding@resend.dev>', // Use your verified domain here in production
+            to: bookingData.email,
+            subject: 'Confirm your Appointment - Jerry Service Garage',
+            html: `
+              <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+                <h2>Confirm your Appointment</h2>
+                <p>Hi ${bookingData.fullName},</p>
+                <p>Thank you for booking with Jerry Service Garage. Please confirm your appointment details below:</p>
+                <ul>
+                  <li><strong>Service:</strong> ${bookingData.serviceName}</li>
+                  <li><strong>Date:</strong> ${bookingData.appointmentDate}</li>
+                  <li><strong>Time:</strong> ${bookingData.appointmentTime}</li>
+                  <li><strong>Vehicle:</strong> ${bookingData.vehicleYear} ${bookingData.vehicleMake} ${bookingData.vehicleModel}</li>
+                </ul>
+                <p>Click the link below to confirm your appointment:</p>
+                <a href="${verifyUrl}" style="display: inline-block; background-color: #ef4444; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; margin-top: 16px;">Confirm Appointment</a>
+                <p style="margin-top: 32px; font-size: 12px; color: #666;">If you did not request this booking, please ignore this email.</p>
+              </div>
+            `
+          });
+          console.log("Confirmation email sent via Resend");
+        } catch (emailError) {
+          console.error("Failed to send Resend email:", emailError);
+        }
+      } else {
+        console.log("RESEND_API_KEY not set, skipping confirmation email.");
+      }
 
       res.json({ success: true, id: docRef.id });
     } catch (error) {
@@ -191,7 +259,22 @@ Notes: ${bookingData.notes || 'None'}
   // Contact form email endpoint
   app.post("/api/contact", async (req, res) => {
     try {
-      const { name, emailOrPhone, message } = req.body;
+      const { name, emailOrPhone, message, honeypot, recaptchaToken } = req.body;
+
+      // 1. Honeypot Check
+      if (honeypot) {
+        console.log("Bot detected via honeypot in contact form");
+        return res.json({ success: true }); // Fake success
+      }
+
+      // 2. reCAPTCHA Check
+      if (!recaptchaToken) {
+        return res.status(400).json({ success: false, error: "reCAPTCHA token missing" });
+      }
+      const isHuman = await verifyRecaptcha(recaptchaToken);
+      if (!isHuman) {
+        return res.status(400).json({ success: false, error: "reCAPTCHA verification failed" });
+      }
 
       if (!process.env.GMAIL_APP_PASSWORD) {
         console.warn("GMAIL_APP_PASSWORD is not set. Skipping email send.");

@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Phone, MapPin, Clock, Loader2, CheckCircle2 } from 'lucide-react';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import ReCAPTCHA from "react-google-recaptcha";
 
 import { db, handleFirestoreError, OperationType } from '../firebase';
 import { Button } from '../components/ui/button';
@@ -17,12 +18,18 @@ const formSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
   emailOrPhone: z.string().min(5, { message: "Please enter your email or phone number." }),
   message: z.string().min(10, { message: "Message must be at least 10 characters." }),
+  honeypot: z.string().optional(), // Hidden field for bots
 });
 
 export default function Contact() {
   const { t } = useTranslation();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null);
+  const recaptchaRef = useRef<ReCAPTCHA>(null);
+
+  // Google test site key (always passes)
+  const RECAPTCHA_SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY || "6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI";
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -30,10 +37,16 @@ export default function Contact() {
       name: "",
       emailOrPhone: "",
       message: "",
+      honeypot: "",
     },
   });
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
+    if (!recaptchaToken) {
+      alert("Please complete the reCAPTCHA verification.");
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       // Send email via backend
@@ -42,7 +55,7 @@ export default function Contact() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(values),
+        body: JSON.stringify({ ...values, recaptchaToken }),
       });
 
       if (!response.ok) {
@@ -178,6 +191,23 @@ export default function Contact() {
                         className="bg-background min-h-[150px]" 
                       />
                       {form.formState.errors.message && <p className="text-destructive text-sm">{form.formState.errors.message.message}</p>}
+                    </div>
+
+                    {/* Honeypot field - hidden from real users */}
+                    <input 
+                      type="text" 
+                      {...form.register("honeypot")} 
+                      style={{ display: 'none' }} 
+                      tabIndex={-1} 
+                      autoComplete="off" 
+                    />
+
+                    <div className="flex justify-center py-2">
+                      <ReCAPTCHA
+                        ref={recaptchaRef}
+                        sitekey={RECAPTCHA_SITE_KEY}
+                        onChange={(token) => setRecaptchaToken(token)}
+                      />
                     </div>
                     
                     <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-lg py-6" disabled={isSubmitting}>
