@@ -12,7 +12,7 @@ export default function Verify() {
   const [searchParams] = useSearchParams();
   const [status, setStatus] = useState<'loading' | 'success' | 'error' | 'pending'>('pending');
   const [errorMessage, setErrorMessage] = useState('');
-  
+
   const id = searchParams.get('id');
   const token = searchParams.get('token');
 
@@ -25,7 +25,7 @@ export default function Verify() {
       verifyBooking(id, token);
     } else {
       setStatus('error');
-      setErrorMessage('Invalid verification link.');
+      setErrorMessage(t('verify.error.invalidLink'));
     }
   }, [id, token, searchParams]);
 
@@ -37,7 +37,7 @@ export default function Verify() {
 
       if (!docSnap.exists()) {
         setStatus('error');
-        setErrorMessage('Booking not found.');
+        setErrorMessage(t('verify.error.notFound'));
         return;
       }
 
@@ -50,14 +50,14 @@ export default function Verify() {
 
       if (data.verificationToken !== verificationToken) {
         setStatus('error');
-        setErrorMessage('Invalid verification token.');
+        setErrorMessage(t('verify.error.invalidToken'));
         return;
       }
 
       // Check expiration
       if (data.expiresAt && data.expiresAt.toDate() < new Date()) {
         setStatus('error');
-        setErrorMessage('Verification link has expired. Please book again.');
+        setErrorMessage(t('verify.error.expired'));
         // In a real app, we would also release the held slot here.
         return;
       }
@@ -72,7 +72,7 @@ export default function Verify() {
     } catch (error) {
       console.error("Error verifying booking:", error);
       setStatus('error');
-      setErrorMessage('An error occurred during verification. Please try again or contact us.');
+      setErrorMessage(t('verify.error.generic'));
     }
   };
 
@@ -81,7 +81,7 @@ export default function Verify() {
       <div className="max-w-md w-full px-4">
         <Card className="bg-card border-border shadow-lg text-center">
           <CardContent className="p-8">
-            
+
             {status === 'pending' && (
               <div className="space-y-6">
                 <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -91,13 +91,13 @@ export default function Verify() {
                 <p className="text-muted-foreground">
                   {t('book.success.message')}
                 </p>
-                
+
                 {/* DEMO ONLY: Button to simulate clicking the email link */}
                 <div className="mt-8 pt-8 border-t border-border">
-                  <p className="text-xs text-muted-foreground mb-4 uppercase tracking-wider font-bold">Demo Mode</p>
+                  <p className="text-xs text-muted-foreground mb-4 uppercase tracking-wider font-bold">{t('verify.demoMode')}</p>
                   <Button asChild className="w-full bg-secondary hover:bg-secondary/90">
                     <Link to={`/verify?id=${id}&token=${token}&action=confirm`}>
-                      Simulate Email Click
+                      {t('verify.simulateEmail')}
                     </Link>
                   </Button>
                 </div>
@@ -107,7 +107,7 @@ export default function Verify() {
             {status === 'loading' && (
               <div className="space-y-6 py-8">
                 <Loader2 className="h-12 w-12 text-primary animate-spin mx-auto" />
-                <h2 className="text-xl font-serif font-bold">Verifying your appointment...</h2>
+                <h2 className="text-xl font-serif font-bold">{t('verify.loading')}</h2>
               </div>
             )}
 
@@ -121,7 +121,7 @@ export default function Verify() {
                   {t('book.verified.message')}
                 </p>
                 <Button asChild className="w-full mt-6 bg-primary hover:bg-primary/90">
-                  <Link to="/">Return to Home</Link>
+                  <Link to="/">{t('verify.returnHome')}</Link>
                 </Button>
               </div>
             )}
@@ -131,12 +131,12 @@ export default function Verify() {
                 <div className="w-16 h-16 bg-destructive/10 rounded-full flex items-center justify-center mx-auto mb-4">
                   <XCircle className="h-8 w-8 text-destructive" />
                 </div>
-                <h2 className="text-2xl font-serif font-bold">Verification Failed</h2>
+                <h2 className="text-2xl font-serif font-bold">{t('verify.failed')}</h2>
                 <p className="text-muted-foreground">
                   {errorMessage}
                 </p>
                 <Button asChild className="w-full mt-6" variant="outline">
-                  <Link to="/book">Book Again</Link>
+                  <Link to="/book">{t('verify.bookAgain')}</Link>
                 </Button>
               </div>
             )}

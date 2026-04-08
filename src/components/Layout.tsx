@@ -143,13 +143,13 @@ export default function Layout() {
           <div>
             <h3 className="font-bold text-xl mb-6 text-background/50 uppercase tracking-widest">{t('contact.hours')}</h3>
             <ul className="space-y-2 text-background/90 text-lg">
-              <li>Mon - Fri: 8:00 AM - 6:00 PM</li>
-              <li>Sat - Sun: Closed</li>
+              <li>{t('footer.hoursWeekdays')}</li>
+              <li>{t('footer.hoursWeekends')}</li>
             </ul>
           </div>
         </div>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-12 pt-8 border-t-2 border-background/20 flex flex-col md:flex-row justify-center items-center text-lg text-background/60">
-          <p>&copy; {new Date().getFullYear()} Jerry Service Garage. All rights reserved.</p>
+          <p>&copy; {new Date().getFullYear()} {t('footer.copyright')}</p>
         </div>
       </footer>
 

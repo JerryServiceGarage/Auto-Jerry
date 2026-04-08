@@ -43,7 +43,7 @@ export default function Contact() {
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     if (!recaptchaToken) {
-      alert("Please complete the reCAPTCHA verification.");
+      alert(t('contact.error.recaptcha'));
       return;
     }
 
@@ -69,12 +69,12 @@ export default function Contact() {
       }).catch(error => {
         console.error("Backup to Firestore failed:", error);
       });
-      
+
       setIsSuccess(true);
       form.reset();
     } catch (error) {
       console.error("Error submitting contact form:", error);
-      alert("There was an error sending your message. Please try calling us instead.");
+      alert(t('contact.error.send'));
     } finally {
       setIsSubmitting(false);
     }
@@ -89,7 +89,7 @@ export default function Contact() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-          
+
           {/* Contact Info & Map */}
           <div className="space-y-8">
             <Card className="bg-card border-border">
@@ -102,7 +102,7 @@ export default function Contact() {
                     <h3 className="font-serif font-bold text-xl mb-1">{t('contact.phone')}</h3>
                     <p className="text-lg text-muted-foreground">(514) 453-8805</p>
                     <Button asChild variant="link" className="p-0 h-auto text-primary mt-2">
-                      <a href="tel:5144538805">Call Now</a>
+                      <a href="tel:5144538805">{t('cta.call')}</a>
                     </Button>
                   </div>
                 </div>
@@ -129,8 +129,8 @@ export default function Contact() {
                   <div>
                     <h3 className="font-serif font-bold text-xl mb-1">{t('contact.hours')}</h3>
                     <ul className="text-lg text-muted-foreground space-y-1">
-                      <li>Monday - Friday: 8:00 AM - 6:00 PM</li>
-                      <li>Saturday - Sunday: Closed</li>
+                      <li>{t('contact.hours.weekdays')}</li>
+                      <li>{t('contact.hours.weekends')}</li>
                     </ul>
                   </div>
                 </div>
@@ -139,13 +139,13 @@ export default function Contact() {
 
             {/* Embedded Map */}
             <div className="rounded-lg overflow-hidden border-2 border-foreground h-64 bg-muted">
-              <iframe 
-                src="https://maps.google.com/maps?q=Jerry%20Service%20Garage,%20382%20Grand%20Boulevard,%20L'%C3%8Ele-Perrot,%20QC&t=&z=15&ie=UTF8&iwloc=&output=embed" 
-                width="100%" 
-                height="100%" 
-                style={{ border: 0 }} 
-                allowFullScreen={false} 
-                loading="lazy" 
+              <iframe
+                src="https://maps.google.com/maps?q=Jerry%20Service%20Garage,%20382%20Grand%20Boulevard,%20L'%C3%8Ele-Perrot,%20QC&t=&z=15&ie=UTF8&iwloc=&output=embed"
+                width="100%"
+                height="100%"
+                style={{ border: 0 }}
+                allowFullScreen={false}
+                loading="lazy"
                 referrerPolicy="no-referrer-when-downgrade"
                 title="Google Maps location of Jerry Service Garage"
               ></iframe>
@@ -156,17 +156,17 @@ export default function Contact() {
           <div>
             <Card className="bg-card border-border shadow-lg h-full">
               <CardContent className="p-8">
-                <h2 className="text-2xl font-serif font-bold mb-6">Send us a message</h2>
-                
+                <h2 className="text-2xl font-serif font-bold mb-6">{t('contact.sendMessage')}</h2>
+
                 {isSuccess ? (
                   <div className="flex flex-col items-center justify-center h-64 text-center space-y-4">
                     <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
                       <CheckCircle2 className="h-8 w-8 text-green-600" />
                     </div>
-                    <h3 className="text-xl font-bold">Message Sent!</h3>
-                    <p className="text-muted-foreground">We'll get back to you as soon as possible.</p>
+                    <h3 className="text-xl font-bold">{t('contact.success.title')}</h3>
+                    <p className="text-muted-foreground">{t('contact.success.body')}</p>
                     <Button onClick={() => setIsSuccess(false)} variant="outline" className="mt-4">
-                      Send another message
+                      {t('contact.success.again')}
                     </Button>
                   </div>
                 ) : (
@@ -176,30 +176,30 @@ export default function Contact() {
                       <Input id="name" {...form.register("name")} className="bg-background" />
                       {form.formState.errors.name && <p className="text-destructive text-sm">{form.formState.errors.name.message}</p>}
                     </div>
-                    
+
                     <div className="space-y-2">
                       <Label htmlFor="emailOrPhone">{t('contact.form.email')} *</Label>
                       <Input id="emailOrPhone" {...form.register("emailOrPhone")} className="bg-background" />
                       {form.formState.errors.emailOrPhone && <p className="text-destructive text-sm">{form.formState.errors.emailOrPhone.message}</p>}
                     </div>
-                    
+
                     <div className="space-y-2">
                       <Label htmlFor="message">{t('contact.form.message')} *</Label>
-                      <Textarea 
-                        id="message" 
-                        {...form.register("message")} 
-                        className="bg-background min-h-[150px]" 
+                      <Textarea
+                        id="message"
+                        {...form.register("message")}
+                        className="bg-background min-h-[150px]"
                       />
                       {form.formState.errors.message && <p className="text-destructive text-sm">{form.formState.errors.message.message}</p>}
                     </div>
 
                     {/* Honeypot field - hidden from real users */}
-                    <input 
-                      type="text" 
-                      {...form.register("honeypot")} 
-                      style={{ display: 'none' }} 
-                      tabIndex={-1} 
-                      autoComplete="off" 
+                    <input
+                      type="text"
+                      {...form.register("honeypot")}
+                      style={{ display: 'none' }}
+                      tabIndex={-1}
+                      autoComplete="off"
                     />
 
                     <div className="flex justify-center py-2">
@@ -209,10 +209,10 @@ export default function Contact() {
                         onChange={(token) => setRecaptchaToken(token)}
                       />
                     </div>
-                    
+
                     <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-lg py-6" disabled={isSubmitting}>
                       {isSubmitting ? (
-                        <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Sending...</>
+                        <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> {t('contact.sending')}</>
                       ) : (
                         t('contact.form.submit')
                       )}

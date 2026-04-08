@@ -6,7 +6,8 @@ import { getFirestore, collection, addDoc, serverTimestamp, Timestamp, doc, getD
 import fs from "fs";
 import nodemailer from "nodemailer";
 import { Resend } from "resend";
-import "dotenv/config";
+import dotenv from "dotenv";
+dotenv.config({ path: ".env.local" });
 
 // Initialize Firebase Client SDK (more reliable for cross-project access in this environment)
 const firebaseConfig = JSON.parse(fs.readFileSync('./firebase-applet-config.json', 'utf-8'));
@@ -302,6 +303,9 @@ Notes: ${bookingData.notes || 'None'}
       res.status(500).json({ success: false, error: "Failed to send email" });
     }
   });
+
+  // Serve public directory (images, fonts, etc.)
+  app.use(express.static(path.join(process.cwd(), 'public')));
 
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {

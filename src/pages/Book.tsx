@@ -20,15 +20,16 @@ import { Calendar } from '../components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '../components/ui/popover';
 import { cn } from '../lib/utils';
 
-const servicesList = [
-  "Oil Change",
-  "Brake Repair",
-  "Tire Change & Balance",
-  "Diagnostics",
-  "Battery Replacement",
-  "AC / Heating Service",
-  "Suspension / Steering",
-  "General Maintenance"
+// Service values stored in English for backend consistency; labels are translated
+const SERVICE_VALUES = [
+  { value: "Oil Change",           labelKey: "services.oilChange" },
+  { value: "Brake Repair",         labelKey: "services.brakeRepair" },
+  { value: "Tire Change & Balance", labelKey: "services.tireChange" },
+  { value: "Diagnostics",          labelKey: "services.diagnostics" },
+  { value: "Battery Replacement",  labelKey: "services.battery" },
+  { value: "AC / Heating Service", labelKey: "services.acHeating" },
+  { value: "Suspension / Steering", labelKey: "services.suspension" },
+  { value: "General Maintenance",  labelKey: "services.generalMaintenance" },
 ];
 
 // Generate some mock slots for the next 14 days
@@ -39,10 +40,10 @@ const generateMockSlots = () => {
     const date = addDays(today, i);
     // Skip Sundays
     if (date.getDay() === 0) continue;
-    
+
     // Saturday half day
     const hours = date.getDay() === 6 ? [9, 10, 11, 12] : [8, 9, 10, 11, 13, 14, 15, 16];
-    
+
     hours.forEach(hour => {
       // Randomly make some slots unavailable
       if (Math.random() > 0.3) {
@@ -85,7 +86,7 @@ export default function Book() {
 
   // Google test site key (always passes)
   const RECAPTCHA_SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY || "6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI";
-  
+
   const initialService = searchParams.get('service') || "";
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -113,7 +114,7 @@ export default function Book() {
         .filter(slot => slot.date === dateStr && slot.isAvailable)
         .map(slot => slot.time)
         .sort();
-        
+
       setAvailableTimes(times);
       form.setValue("appointmentTime", ""); // Reset time when date changes
     }
@@ -121,7 +122,7 @@ export default function Book() {
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     if (!recaptchaToken) {
-      setSubmitError("Please complete the reCAPTCHA verification.");
+      setSubmitError(t('book.form.recaptchaError'));
       return;
     }
 
@@ -130,7 +131,7 @@ export default function Book() {
     try {
       // Create a verification token
       const verificationToken = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-      
+
       const bookingData = {
         ...values,
         appointmentDate: format(values.appointmentDate, 'yyyy-MM-dd'),
@@ -154,13 +155,13 @@ export default function Book() {
       }
 
       const result = await response.json();
-      
+
       // Redirect directly to the success state of the verify page
       navigate(`/verify?id=${result.id}&token=${verificationToken}&action=confirm`);
-      
+
     } catch (error) {
       console.error("Error submitting booking:", error);
-      const message = error instanceof Error ? error.message : "There was an error submitting your booking. Please try again or call us.";
+      const message = error instanceof Error ? error.message : t('book.form.submitError');
       setSubmitError(message);
     } finally {
       setIsSubmitting(false);
@@ -178,10 +179,10 @@ export default function Book() {
         <Card className="bg-card border-border shadow-lg">
           <CardContent className="p-6 md:p-8">
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-              
+
               {/* Personal Info */}
               <div className="space-y-4">
-                <h3 className="text-xl font-bold border-b border-border pb-2">Personal Information</h3>
+                <h3 className="text-xl font-bold border-b border-border pb-2">{t('book.sections.personal')}</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="fullName">{t('book.form.name')} *</Label>
@@ -203,7 +204,7 @@ export default function Book() {
 
               {/* Vehicle Info */}
               <div className="space-y-4">
-                <h3 className="text-xl font-bold border-b border-border pb-2">Vehicle Information</h3>
+                <h3 className="text-xl font-bold border-b border-border pb-2">{t('book.sections.vehicle')}</h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="vehicleYear">{t('book.form.vehicleYear')} *</Label>
@@ -225,20 +226,20 @@ export default function Book() {
 
               {/* Appointment Details */}
               <div className="space-y-4">
-                <h3 className="text-xl font-bold border-b border-border pb-2">Appointment Details</h3>
-                
+                <h3 className="text-xl font-bold border-b border-border pb-2">{t('book.sections.appointment')}</h3>
+
                 <div className="space-y-2">
                   <Label htmlFor="serviceName">{t('book.form.service')} *</Label>
-                  <Select 
-                    onValueChange={(value) => form.setValue("serviceName", value)} 
+                  <Select
+                    onValueChange={(value) => form.setValue("serviceName", value)}
                     value={form.watch("serviceName") || ""}
                   >
                     <SelectTrigger className="bg-background">
-                      <SelectValue placeholder="Select a service" />
+                      <SelectValue placeholder={t('book.form.selectService')} />
                     </SelectTrigger>
                     <SelectContent>
-                      {servicesList.map((service) => (
-                        <SelectItem key={service} value={service}>{service}</SelectItem>
+                      {SERVICE_VALUES.map((service) => (
+                        <SelectItem key={service.value} value={service.value}>{t(service.labelKey)}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -258,7 +259,7 @@ export default function Book() {
                           )}
                         >
                           <CalendarIcon className="mr-2 h-4 w-4" />
-                          {selectedDate ? format(selectedDate, "PPP") : <span>Pick a date</span>}
+                          {selectedDate ? format(selectedDate, "PPP") : <span>{t('book.form.pickDate')}</span>}
                         </Button>
                       </PopoverTrigger>
                       <PopoverContent className="w-auto p-0">
@@ -281,13 +282,19 @@ export default function Book() {
 
                   <div className="space-y-2">
                     <Label>{t('book.form.time')} *</Label>
-                    <Select 
+                    <Select
                       disabled={!selectedDate || availableTimes.length === 0}
                       onValueChange={(value) => form.setValue("appointmentTime", value)}
                       value={form.watch("appointmentTime") || ""}
                     >
                       <SelectTrigger className="bg-background">
-                        <SelectValue placeholder={!selectedDate ? "Select date first" : availableTimes.length === 0 ? "No slots available" : "Select time"} />
+                        <SelectValue placeholder={
+                          !selectedDate
+                            ? t('book.form.selectDateFirst')
+                            : availableTimes.length === 0
+                              ? t('book.form.noSlots')
+                              : t('book.form.selectTime')
+                        } />
                       </SelectTrigger>
                       <SelectContent>
                         {availableTimes.map((time) => (
@@ -301,22 +308,22 @@ export default function Book() {
 
                 <div className="space-y-2">
                   <Label htmlFor="notes">{t('book.form.notes')}</Label>
-                  <Textarea 
-                    id="notes" 
-                    {...form.register("notes")} 
-                    className="bg-background min-h-[100px]" 
-                    placeholder="Any specific issues or details we should know about?"
+                  <Textarea
+                    id="notes"
+                    {...form.register("notes")}
+                    className="bg-background min-h-[100px]"
+                    placeholder={t('book.form.notesPlaceholder')}
                   />
                 </div>
               </div>
 
               {/* Honeypot field - hidden from real users */}
-              <input 
-                type="text" 
-                {...form.register("honeypot")} 
-                style={{ display: 'none' }} 
-                tabIndex={-1} 
-                autoComplete="off" 
+              <input
+                type="text"
+                {...form.register("honeypot")}
+                style={{ display: 'none' }}
+                tabIndex={-1}
+                autoComplete="off"
               />
 
               <div className="flex justify-center py-4">
@@ -335,15 +342,15 @@ export default function Book() {
                 )}
                 <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-lg py-6" disabled={isSubmitting}>
                   {isSubmitting ? (
-                    <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Processing...</>
+                    <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> {t('book.form.processing')}</>
                   ) : (
                     t('book.form.submit')
                   )}
                 </Button>
                 <p className="text-center text-sm text-muted-foreground mt-4">
-                  By booking, you agree to our <Link to="/terms" className="underline">Booking Terms</Link>.
+                  {t('book.form.termsPrefix')} <Link to="/terms" className="underline">{t('footer.terms')}</Link>.
                   <br />
-                  <span className="text-primary font-medium">Testing Mode: Appointments are automatically confirmed.</span>
+                  <span className="text-primary font-medium">{t('book.form.testingMode')}</span>
                 </p>
               </div>
             </form>

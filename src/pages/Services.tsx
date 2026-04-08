@@ -8,38 +8,15 @@ export default function Services() {
   const { t } = useTranslation();
 
   const servicesList = [
-    {
-      name: "Oil Change",
-      description: "Full synthetic, synthetic blend, or conventional oil change including filter replacement and fluid top-off."
-    },
-    {
-      name: "Brake Repair",
-      description: "Complete brake inspection, pad replacement, rotor resurfacing or replacement, and brake fluid flush."
-    },
-    {
-      name: "Tire Change & Balance",
-      description: "Seasonal tire swaps, mounting, balancing, and flat repairs."
-    },
-    {
-      name: "Diagnostics",
-      description: "Check engine light scanning and comprehensive system diagnostics to identify issues accurately."
-    },
-    {
-      name: "Battery Replacement",
-      description: "Battery testing, terminal cleaning, and replacement with high-quality batteries."
-    },
-    {
-      name: "AC / Heating Service",
-      description: "A/C recharge, leak detection, and heating system repairs for year-round comfort."
-    },
-    {
-      name: "Suspension / Steering",
-      description: "Shocks, struts, tie rods, and wheel alignments to ensure a smooth and safe ride."
-    },
-    {
-      name: "General Maintenance",
-      description: "Factory scheduled maintenance, tune-ups, belts, hoses, and filter replacements."
-    }
+    { name: t('services.oilChange'), description: t('services.oilChange.desc') },
+    { name: t('services.brakeRepair'), description: t('services.brakeRepair.desc') },
+    { name: t('services.tireChange'), description: t('services.tireChange.desc') },
+    { name: t('services.diagnostics'), description: t('services.diagnostics.desc') },
+    { name: t('services.battery'), description: t('services.battery.desc') },
+    { name: t('services.acHeating'), description: t('services.acHeating.desc') },
+    { name: t('services.suspension'), description: t('services.suspension.desc') },
+    { name: t('services.generalMaintenance'), description: t('services.generalMaintenance.desc') },
+    { name: t('services.exhaust'), description: t('services.exhaust.desc') },
   ];
 
   return (
@@ -49,7 +26,7 @@ export default function Services() {
           <h1 className="text-4xl md:text-5xl font-serif font-bold text-foreground mb-6">{t('services.title')}</h1>
           <div className="w-24 h-1 bg-primary mx-auto mb-6"></div>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-            We offer comprehensive auto repair services for all makes and models. Our experienced technicians use quality parts to get you back on the road safely.
+            {t('services.subtitle')}
           </p>
         </div>
 
@@ -74,16 +51,16 @@ export default function Services() {
         </div>
 
         <div className="mt-24 bg-secondary text-secondary-foreground rounded-3xl p-10 md:p-16 border-2 border-foreground shadow-[8px_8px_0px_0px_rgba(23,33,41,1)] text-center">
-          <h2 className="text-4xl md:text-5xl font-bold mb-6">Ready to Book?</h2>
+          <h2 className="text-4xl md:text-5xl font-bold mb-6">{t('services.readyToBook')}</h2>
           <p className="text-xl mb-10 max-w-2xl mx-auto text-secondary-foreground/90">
-            Schedule your next service online or give us a call. We're here to help keep your vehicle running smoothly.
+            {t('services.readyToBookDesc')}
           </p>
           <div className="flex flex-col sm:flex-row gap-6 justify-center">
             <Button asChild size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground text-xl px-10 py-6 rounded-full border-2 border-foreground">
-              <Link to="/book">Book Appointment</Link>
+              <Link to="/book">{t('services.bookAppointment')}</Link>
             </Button>
             <Button asChild size="lg" variant="outline" className="bg-transparent border-2 border-foreground text-foreground hover:bg-foreground hover:text-background text-xl px-10 py-6 rounded-full">
-              <a href="tel:5144538805">Call (514) 453-8805</a>
+              <a href="tel:5144538805">{t('cta.call')} (514) 453-8805</a>
             </Button>
           </div>
         </div>
