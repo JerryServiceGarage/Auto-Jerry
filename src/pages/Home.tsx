@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 import { Button } from '../components/ui/button';
+import backgroundImage from '../assets/background.png';
 import { Card, CardContent } from '../components/ui/card';
 import { Phone, MapPin, CheckCircle2, Star } from 'lucide-react';
 
@@ -18,7 +19,7 @@ export default function Home() {
       {/* Hero Section */}
       <section className="relative text-foreground py-20 md:py-32 overflow-hidden border-b-2 border-foreground">
         <img
-          src="/background.png"
+          src={backgroundImage}
           alt=""
           style={{
             position: 'absolute', top: 0, left: 0, width: '100%', height: '100%',
