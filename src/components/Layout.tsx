@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Menu, X, Phone, MapPin, Wrench, Sparkles } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from './ui/button';
+import jerryIcon from '../assets/jerry-icon.png';
 
 export default function Layout() {
   const { t, i18n } = useTranslation();
@@ -30,13 +31,11 @@ export default function Layout() {
           <div className="flex justify-between h-20 items-center">
             {/* Logo */}
             <Link to="/" className="flex items-center gap-2">
-              <div className="w-16 h-16 rounded-full border-2 border-foreground overflow-hidden flex-shrink-0 bg-primary">
-                {/* Placeholder for the uploaded image of Jerry on the phone */}
-                <img 
-                  src="https://raw.githubusercontent.com/jdrizzzzz/Skincare-FrontEnd/refs/heads/main/src/assets/Jerry1.jpg" 
-                  alt="Jerry's Garage" 
+              <div className="w-12 h-12 rounded-full border-2 border-foreground overflow-hidden flex-shrink-0 bg-primary">
+                <img
+                  src={jerryIcon}
+                  alt="Jerry's Garage"
                   className="w-full h-full object-cover object-center"
-                  referrerPolicy="no-referrer"
                 />
               </div>
               <span className="font-bold text-2xl tracking-tight text-foreground">
@@ -122,13 +121,11 @@ export default function Layout() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 md:grid-cols-3 gap-12">
           <div>
             <div className="flex items-center gap-2 mb-6">
-              <div className="w-16 h-16 rounded-full border-2 border-background overflow-hidden flex-shrink-0 bg-primary">
-                {/* Placeholder for the uploaded image of Jerry on the phone */}
-                <img 
-                  src="https://raw.githubusercontent.com/jdrizzzzz/Skincare-FrontEnd/refs/heads/main/src/assets/Jerry1.jpg"
-                  alt="Jerry's Garage" 
+              <div className="w-12 h-12 rounded-full border-2 border-background overflow-hidden flex-shrink-0 bg-primary">
+                <img
+                  src={jerryIcon}
+                  alt="Jerry's Garage"
                   className="w-full h-full object-cover object-center"
-                  referrerPolicy="no-referrer"
                 />
               </div>
               <span className="font-bold text-2xl tracking-tight">Auto Jerry</span>
