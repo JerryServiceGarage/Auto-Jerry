@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+
+# Block crawlers from hitting internal/utility paths
+Disallow: /api/
+Disallow: /__/
+
+Sitemap: https://autojerry.ca/sitemap.xml
