@@ -72,6 +72,7 @@ const formSchema = z.object({
   appointmentTime: z.string().min(1, { message: "Please select a time." }),
   notes: z.string().optional(),
   honeypot: z.string().optional(), // Hidden field for bots
+  privacyConsent: z.boolean().refine(val => val === true, { message: "privacy_required" }),
 });
 
 export default function Book() {
@@ -102,6 +103,7 @@ export default function Book() {
       appointmentTime: "",
       notes: "",
       honeypot: "",
+      privacyConsent: false,
     },
   });
 
@@ -334,6 +336,27 @@ export default function Book() {
                 />
               </div>
 
+              {/* Privacy consent checkbox — required by Quebec Law 25 */}
+              <div className="space-y-2">
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="mt-1 h-4 w-4 accent-primary flex-shrink-0"
+                    checked={form.watch("privacyConsent") ?? false}
+                    onChange={(e) => form.setValue("privacyConsent", e.target.checked, { shouldValidate: true })}
+                  />
+                  <span className="text-sm text-muted-foreground leading-snug">
+                    {t('book.form.privacyConsent')}{' '}
+                    <Link to="/privacy" className="underline text-primary">{t('footer.privacy')}</Link>{' '}
+                    {t('book.form.privacyConsentAnd')}{' '}
+                    <Link to="/terms" className="underline text-primary">{t('footer.terms')}</Link>.
+                  </span>
+                </label>
+                {form.formState.errors.privacyConsent && (
+                  <p className="text-destructive text-sm ml-7">{t('book.form.privacyConsentRequired')}</p>
+                )}
+              </div>
+
               <div className="pt-4">
                 {submitError && (
                   <div className="mb-4 p-4 bg-destructive/10 border border-destructive/20 rounded-md text-destructive text-sm font-medium">
@@ -348,8 +371,6 @@ export default function Book() {
                   )}
                 </Button>
                 <p className="text-center text-sm text-muted-foreground mt-4">
-                  {t('book.form.termsPrefix')} <Link to="/terms" className="underline">{t('footer.terms')}</Link>.
-                  <br />
                   <span className="text-primary font-medium">{t('book.form.testingMode')}</span>
                 </p>
               </div>

@@ -144,7 +144,22 @@ const resources = {
       "footer.terms": "Booking Terms",
       "footer.hoursWeekdays": "Mon - Fri: 8:00 AM - 6:00 PM",
       "footer.hoursWeekends": "Sat - Sun: Closed",
-      "footer.copyright": "Jerry Service Garage. All rights reserved."
+      "footer.copyright": "Jerry Service Garage. All rights reserved.",
+
+      // Cookie consent
+      "cookie.title": "We use cookies",
+      "cookie.description": "This site uses cookies and third-party services (Google Maps, reCAPTCHA) that may collect data. See our",
+      "cookie.accept": "Accept",
+      "cookie.decline": "Decline",
+
+      // Book form — privacy consent
+      "book.form.privacyConsent": "I have read and agree to the",
+      "book.form.privacyConsentAnd": "and the",
+      "book.form.privacyConsentRequired": "You must accept the privacy policy to continue.",
+
+      // Privacy & Terms pages
+      "privacy.title": "Privacy Policy",
+      "terms.title": "Booking Terms"
     }
   },
   fr: {
@@ -289,7 +304,22 @@ const resources = {
       "footer.terms": "Conditions de réservation",
       "footer.hoursWeekdays": "Lun - Ven : 8 h - 18 h",
       "footer.hoursWeekends": "Sam - Dim : Fermé",
-      "footer.copyright": "Jerry Service Garage. Tous droits réservés."
+      "footer.copyright": "Jerry Service Garage. Tous droits réservés.",
+
+      // Cookie consent
+      "cookie.title": "Nous utilisons des cookies",
+      "cookie.description": "Ce site utilise des cookies et des services tiers (Google Maps, reCAPTCHA) susceptibles de collecter des données. Voir notre",
+      "cookie.accept": "Accepter",
+      "cookie.decline": "Refuser",
+
+      // Book form — privacy consent
+      "book.form.privacyConsent": "J'ai lu et j'accepte la",
+      "book.form.privacyConsentAnd": "et les",
+      "book.form.privacyConsentRequired": "Vous devez accepter la politique de confidentialité pour continuer.",
+
+      // Privacy & Terms pages
+      "privacy.title": "Politique de confidentialité",
+      "terms.title": "Conditions de réservation"
     }
   }
 };
@@ -298,8 +328,8 @@ i18n
   .use(initReactI18next)
   .init({
     resources,
-    lng: "en", // default language
-    fallbackLng: "en",
+    lng: "fr", // default language — French required for Quebec (Bill 96)
+    fallbackLng: "fr",
     interpolation: {
       escapeValue: false
     }

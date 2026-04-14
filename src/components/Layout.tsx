@@ -1,9 +1,10 @@
 import { Outlet, Link, useLocation } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { Menu, X, Phone, MapPin, Wrench, Sparkles } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from './ui/button';
 import jerryIcon from '../assets/jerry-icon.png';
+import CookieConsent from './CookieConsent';
 
 export default function Layout() {
   const { t, i18n } = useTranslation();
@@ -13,7 +14,12 @@ export default function Layout() {
   const toggleLanguage = () => {
     const newLang = i18n.language === 'en' ? 'fr' : 'en';
     i18n.changeLanguage(newLang);
+    document.documentElement.lang = newLang;
   };
+
+  useEffect(() => {
+    document.documentElement.lang = i18n.language;
+  }, [i18n.language]);
 
   const navLinks = [
     { name: t('nav.home'), path: '/' },
@@ -149,10 +155,20 @@ export default function Layout() {
             </ul>
           </div>
         </div>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-12 pt-8 border-t-2 border-background/20 flex flex-col md:flex-row justify-center items-center text-lg text-background/60">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-12 pt-8 border-t-2 border-background/20 flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-background/60">
           <p>&copy; {new Date().getFullYear()} {t('footer.copyright')}</p>
+          <div className="flex gap-6">
+            <Link to="/privacy" className="hover:text-background transition-colors underline underline-offset-2">
+              {t('footer.privacy')}
+            </Link>
+            <Link to="/terms" className="hover:text-background transition-colors underline underline-offset-2">
+              {t('footer.terms')}
+            </Link>
+          </div>
         </div>
       </footer>
+
+      <CookieConsent />
 
       {/* Mobile Sticky Action Bar */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 bg-card border-t border-border p-2 flex gap-2 z-50">
